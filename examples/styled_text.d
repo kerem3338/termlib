@@ -1,5 +1,5 @@
 /*
-text.d: Example usage getStyled function.
+styled_text.d: Example usage getStyled function.
 
 Author : Zoda
 License: MIT

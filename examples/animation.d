@@ -16,7 +16,7 @@ void main() {
 	string[] frames     = ["<$>-_<$>","<$>_-<$>","<$>--<$>"];
 	size_t currentFrame = 0;
 	bool run            = true;
-	Size termSize       = getTerminalSize();
+	Size termSize       = getConsoleSize();
 
 
 	buffer.setSize(termSize.w, termSize.h - 1);

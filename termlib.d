@@ -34,6 +34,7 @@ const string __version__ = "0.1.0";
 
 version(Windows) {
 	import core.sys.windows.windows;
+	import std.string: toStringz;
 }
 
 enum AsciiKeys {
@@ -44,24 +45,57 @@ enum AsciiKeys {
 	space = 32
 }
 
+struct Styles {
+	enum string underlineBegin = "\033[4m";
+	enum string italicBegin    = "\033[3m";
+	enum string blinkingBegin  = "\033[5m";
+	enum string boldBegin      = "\033[1m";
+
+	enum string underlineEnd   = "\033[24m";
+	enum string italicEnd      = "\033[23m";
+	enum string blinkingEnd    = "\033[25m";
+	enum string boldEnd        = "\033[22m";
+	enum string reset          = "\033[0m";
+}
+
+struct Ansi {
+	enum string setCursorPosition = "\033[%d;%dH";
+	enum string showCursor = "\033[?25h";
+	enum string hideCursor = "\033[?25l";
+	enum string getColored = "\033[38;2;%d;%d;%dm%s\033[0m";
+}
+
+void setCursorPositionOS(int x, int y) {
+	version (Windows) {
+		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), COORD(cast(short)x, cast(short)y));
+	} else {
+		setCursorPosition(x, y);
+	}
+}
+
 void setCursorPosition(int x, int y) {
-	writef("\033[%d;%dH", y + 1 ,x + 1);
+	writef(Ansi.setCursorPosition, y + 1 ,x + 1);
 }
 
 void hideCursor() {
-	write("\033[?25l");
+	write(Ansi.hideCursor);
 }
 
 void showCursor() {
-	write("\033[?25h");
+	write(Ansi.showCursor);
 }
 
-string getStyled(string text, bool underline = false, bool italic = false, bool blinking = false) {
+string getColored(int r, int g, int b, string text) {
+	return format(Ansi.getColored, r, g, b, text);
+}
+
+string getStyled(string text, bool underline = false, bool italic = false, bool blinking = false, bool bold = false) {
 	string _content = ""; 
 	// begin
 	if (underline) _content ~= "\033[4m";
 	if (italic) _content ~= "\033[3m";
 	if (blinking) _content ~= "\033[5m";
+	if (bold) _content ~= "\033[1m";
 
 	_content ~= text;
 
@@ -69,12 +103,13 @@ string getStyled(string text, bool underline = false, bool italic = false, bool 
 	if (underline) _content ~= "\033[24m";
 	if (italic) _content ~= "\033[23m";
 	if (blinking) _content ~= "\033[25m";
+	if (bold) _content ~= "\033[22m";
 
 	return _content;
 }
 
 /*
-Function for getting terminal size
+Function for getting console size
 
 Returns:
 	Size
@@ -82,7 +117,7 @@ Returns:
 Supported Platforms:
 	Windows only for now.
 */
-Size getTerminalSize() {
+Size getConsoleSize() {
 	Size size = Size(0,0);
 	version (Windows) {
 		CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -94,11 +129,38 @@ Size getTerminalSize() {
 	return size;
 }
 
+/*
+Function for setting console title
+
+Supported Platforms:
+	Windows only for now.
+*/
+void setConsoleTitleOS(string title) {
+	version (Windows) {
+		if(title.length > MAX_PATH) title = title[0..MAX_PATH];
+		SetConsoleTitleA(toStringz(title));
+	}
+}
 struct URect {
 	uint x;
 	uint y;
 	uint w;
 	uint h;
+
+	bool checkPoint(Point point) {
+			return point.x >= x && point.x < x + w &&
+				point.y >= y && point.y < y + h;
+	}
+}
+
+struct Point {
+	int x;
+	int y;
+}
+
+struct UPoint {
+	uint x;
+	uint y;
 }
 
 struct Size {
@@ -118,6 +180,7 @@ struct CharBuffer {
 	alias writeWC = writeWidthCentered;
 	alias writeHC = writeHeightCentered;
 	alias writeC = writeCentered;
+	alias drawER = drawEmptyRect;
 	
 	void setSize(uint w, uint h) {
 		width = w;
@@ -133,9 +196,7 @@ struct CharBuffer {
 	}
 
 	void fill(wchar chr) {
-		for (int i = 0; i < data.length; i++) {
-			data[i] = chr;
-		}
+		data[] = chr;
 	}
 
 	wchar getAt(uint x, uint y) {
@@ -175,6 +236,14 @@ struct CharBuffer {
 		writeAt(x, y, text);
 	}
 
+	URect writeCenteredRect(string text) {
+		uint x = width / 2 - cast(uint)(text.length / 2);
+		uint y = height / 2;
+		writeAt(x, y, text);
+
+		return URect(x, y, text.length, 1);
+	}
+
 
 	CharBuffer getsubArea(URect rect) {
 		CharBuffer subBuffer;
@@ -210,6 +279,21 @@ struct CharBuffer {
 		}
 	}
 	
+	void drawEmptyRect(URect rect, wchar chr) {
+		uint right = rect.x + rect.w - 1;
+		uint bottom = rect.y + rect.h - 1;
+		
+		for (uint x = rect.x; x <= right; x++) {
+			setAt(x, rect.y, chr);
+			setAt(x, bottom, chr);
+		}
+		
+		for (uint y = rect.y + 1; y < bottom; y++) {
+			setAt(rect.x, y, chr);
+			setAt(right, y, chr);
+		}
+	}
+
 	void fillArea(URect rect, wchar chr) {
 		for (int y = 0; y < rect.h; y++) {
 			for (int x = 0; x < rect.w; x++) {
@@ -223,7 +307,6 @@ struct CharBuffer {
 	}
 
 
-	/* untested */
 	void drawBufferSkip(uint whereX, uint whereY, CharBuffer otherBuffer, wchar charToSkip) {
 		for (int y = 0; y < otherBuffer.height; y++) {
 			for (int x = 0; x < otherBuffer.width; x++) {
@@ -270,6 +353,31 @@ CharBuffer mergeBuffers(CharBuffer[] buffers, uint width, uint height, wchar emp
 	return mergedBuffer;
 }
 
+/**
+A function for converting buffer data to Terminal Text Image format version
+
+Params:
+	Charbuffer buffer: Buffer to convert
+Returns:
+	str
+**/
+string bufferToTTI(CharBuffer buffer) {
+	string outSrc = "TTI 1\n";
+	outSrc ~= format("%d %d\n---\n", buffer.width, buffer.height);
+
+	int x, y = 0;
+	foreach (wchar ch; buffer.data) {
+		outSrc ~= ch;
+		x += 1;
+
+		if (x == buffer.width) {
+			x = 0;
+			y++;
+			outSrc ~= "\n";
+		}
+	}
+	return outSrc;
+}
 
 unittest {
 	CharBuffer buffer;
@@ -277,4 +385,15 @@ unittest {
 	buffer.fill('#');
 
 	assert(buffer.getAt(0,0) == '#');
+}
+
+unittest {
+	CharBuffer buffer;
+	buffer.setSize(10,10);
+	assert(buffer.isValidPosition(1,1));
+}
+
+// Is everything fine?
+unittest {
+	assert(1 == 1);
 }

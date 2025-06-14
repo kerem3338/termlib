@@ -25,8 +25,11 @@ Commands:
 	build-examples   -> Builds the examples.
 	run-tests        -> Builds && runs unit tests
 	build <filename> -> Builds the given file with termlib.d
+	fix-win          -> executes `chcp 65001` command.
 
-
+Flags:
+	-time            -> Records elapsed time to execute the command
+	
 termlib is a project by Zoda (github.com/kerem3338)
 ";
 bool check_value_arg(string arg_name,string[] args) {
@@ -122,6 +125,9 @@ void main(string[] args) {
 		case "run-tests":
 			CMD("dmd termlib.d -unittest -main -of=termlib.exe");
 			CMD("termlib.exe");
+			break;
+		case "fix-win":
+			CMD("chcp 65001");
 			break;
 		default:
 			write("Invalid command. \n");
