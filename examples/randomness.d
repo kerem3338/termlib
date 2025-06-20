@@ -10,7 +10,7 @@ import std.stdio;
 import std.random;
 
 void main() {
-	CharBuffer buffer;
+	CharBuffer buffer = new CharBuffer();
 
 	buffer.setSize(25,25);
 	buffer.fill(' ');

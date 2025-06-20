@@ -30,7 +30,7 @@ import std.format;
 extern (C) int kbhit();
 extern (C) int getch();
 
-const string __version__ = "0.1.0";
+const string __version__ = "0.1.1";
 
 version(Windows) {
 	import core.sys.windows.windows;
@@ -43,6 +43,15 @@ enum AsciiKeys {
 	leftArrow = 75,
 	rightArrow = 77,
 	space = 32
+}
+
+struct Colors {
+	enum Color white = Color(255, 255, 255);
+	enum Color black = Color(0, 0, 0);
+	enum Color red   = Color(255, 0, 0);
+	enum Color green = Color(0, 255, 0);
+	enum Color blue  = Color(0, 0, 255);
+	enum Color grey = Color(127, 127, 127);
 }
 
 struct Styles {
@@ -63,8 +72,18 @@ struct Ansi {
 	enum string showCursor = "\033[?25h";
 	enum string hideCursor = "\033[?25l";
 	enum string getColored = "\033[38;2;%d;%d;%dm%s\033[0m";
+	enum string getBackColored = "\033[48;2;%d;%d;%dm";
+	enum string setTitle = "\033]2;%s\007";
 }
 
+/*
+Behavior:
+	Uses the target operating system's native way to set cursor position if there are any.
+	or tries the ANSI version 'setCursorPosition.'
+
+Supported Platforms:
+	Windows []
+*/
 void setCursorPositionOS(int x, int y) {
 	version (Windows) {
 		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), COORD(cast(short)x, cast(short)y));
@@ -85,9 +104,29 @@ void showCursor() {
 	write(Ansi.showCursor);
 }
 
+void clear(Size size, string lineEnd = "\n") {
+	int line = 0;
+	while (line < size.height) {
+		write(lineEnd);
+		line++;
+	}
+}
+
+void fixWindows() {
+	version (Windows) {
+		import core.stdc.stdlib: system;
+		system(" ");
+	}
+}
+
 string getColored(int r, int g, int b, string text) {
 	return format(Ansi.getColored, r, g, b, text);
 }
+
+string getCombinedColored(Color fg, Color bg, string text) {
+	return format(Ansi.getBackColored, bg.r, bg.g, bg.b) ~  getColored(fg.r, fg.g, fg.b, text) ~ "\033[49m";
+}
+
 
 string getStyled(string text, bool underline = false, bool italic = false, bool blinking = false, bool bold = false) {
 	string _content = ""; 
@@ -118,29 +157,34 @@ Supported Platforms:
 	Windows only for now.
 */
 Size getConsoleSize() {
-	Size size = Size(0,0);
+	Size size = Size(0, 0);
 	version (Windows) {
 		CONSOLE_SCREEN_BUFFER_INFO csbi;
-		GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-		size.width = csbi.dwSize.X;
-		size.height = csbi.dwSize.Y;
+		if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+			size.width = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+			size.height = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+		}
 	}
 
 	return size;
 }
 
+
 /*
 Function for setting console title
 
 Supported Platforms:
-	Windows only for now.
+	Windows [TESTED] / Linux [NOT TESTED]
 */
 void setConsoleTitleOS(string title) {
 	version (Windows) {
 		if(title.length > MAX_PATH) title = title[0..MAX_PATH];
 		SetConsoleTitleA(toStringz(title));
+	} else {
+		write(format(Ansi.setTitle, title));
 	}
 }
+
 struct URect {
 	uint x;
 	uint y;
@@ -171,7 +215,12 @@ struct Size {
 	alias h = height;
 }
 
-struct CharBuffer {
+struct Color {
+	ubyte r, g, b;
+	ubyte a = 255;
+}
+
+class CharBuffer {
 	wchar[] data;
 	uint width;
 	uint height;
@@ -182,6 +231,7 @@ struct CharBuffer {
 	alias writeC = writeCentered;
 	alias drawER = drawEmptyRect;
 	
+	this() {}
 	void setSize(uint w, uint h) {
 		width = w;
 		height = h;
@@ -246,7 +296,7 @@ struct CharBuffer {
 
 
 	CharBuffer getsubArea(URect rect) {
-		CharBuffer subBuffer;
+		CharBuffer subBuffer = new CharBuffer();
 		subBuffer.setSize(rect.w, rect.h);
 		subBuffer.fill(' ');
 
@@ -342,8 +392,100 @@ struct CharBuffer {
 
 }
 
+class ColoredBuffer : CharBuffer {
+	Color fg = Color(255, 255, 255);
+	Color bg = Color(0, 0, 0);
+	Color[] fgData;
+	Color[] bgData;
+
+	this() {}
+
+	override void setSize(uint w, uint h) {
+		super.setSize(w, h);
+		fgData.length = w * h;
+		fgData[] = fg;
+
+
+		bgData.length = w * h;
+		bgData[] = bg;
+	}
+
+	override void fill(wchar chr) {
+			super.fill(chr);
+			fgData[] = fg;
+			bgData[] = bg;
+	}
+
+	void fillColored(Color _fg, Color _bg, wchar chr) {
+		super.fill(chr);
+		fgData[] = _fg;
+		bgData[] = _bg;
+	}
+
+	void writeAtColored(Color fg, Color bg, uint x, uint y, string text) {
+		Color _fg = this.fg;
+		Color _bg = this.bg;
+
+		this.fg = fg;
+		this.bg = bg;
+		for (int i = 0; i < text.length; i++) {
+			wchar chr = text[i];
+			setAt(x + i, y , chr);
+		}
+
+		this.fg = _fg;
+		this.bg = _bg;
+	}
+
+	override void setAt(uint x, uint y, wchar ch) {
+		super.setAt(x, y, ch);
+		if (!isValidPosition(x, y)) return;
+
+		fgData[y * width + x] = fg;
+		bgData[y * width + x] = bg;
+   }
+
+	void setColorAt(uint x, uint y, Color fg, Color bg) {
+		if (!isValidPosition(x, y)) return;
+		fgData[y * width + x] = fg;
+		bgData[y * width + x] = bg;
+	}
+
+	/** 
+	 *  Params:
+	 *   x = X
+	 *   y = Y
+	 * Returns: Color[2] (fg, bg)
+	 */
+	Color[2] getColorAt(uint x, uint y) {
+		if (!isValidPosition(x, y)) return [Color(0, 0, 0, 0), Color(0, 0, 0, 0)];
+		return [fgData[y * width + x], bgData[y * width + x]];
+	}
+
+	string getAsColored() {
+		int x = 0;
+		string value;
+		
+		for (int i = 0; i < data.length; i++) {
+			wchar ch = data[i];
+			Color fg = fgData[i];
+			Color bg = bgData[i];
+			if (x == width) {
+				x = 0;
+				value ~= "\n";
+			}
+
+			x++;
+			value ~= getCombinedColored(fg, bg, ch.to!string);
+		}
+
+		return value;
+	}
+
+}
+
 CharBuffer mergeBuffers(CharBuffer[] buffers, uint width, uint height, wchar emptyCellChar) {
-	CharBuffer mergedBuffer;
+	CharBuffer mergedBuffer = new CharBuffer();
 	mergedBuffer.setSize(width, height);
 	mergedBuffer.fill(emptyCellChar);
 
@@ -357,7 +499,7 @@ CharBuffer mergeBuffers(CharBuffer[] buffers, uint width, uint height, wchar emp
 A function for converting buffer data to Terminal Text Image format version
 
 Params:
-	Charbuffer buffer: Buffer to convert
+	CharBuffer buffer: Buffer to convert
 Returns:
 	str
 **/
@@ -379,8 +521,11 @@ string bufferToTTI(CharBuffer buffer) {
 	return outSrc;
 }
 
+/*****************************************************************/
+/** Termlib Tests                                               **/
+/*****************************************************************/
 unittest {
-	CharBuffer buffer;
+	CharBuffer buffer = new CharBuffer();
 	buffer.setSize(1,1);
 	buffer.fill('#');
 
@@ -388,7 +533,21 @@ unittest {
 }
 
 unittest {
-	CharBuffer buffer;
+	ColoredBuffer buffer = new ColoredBuffer();
+	buffer.fg = Colors.red;
+	buffer.bg = Colors.white;
+
+	buffer.setSize(1,1);
+	buffer.fill('#');
+
+	Color[2] cellColor = buffer.getColorAt(0,0);
+
+	// Color[2] = (fg, bg)
+	assert(cellColor[0] == Colors.red && cellColor[1] == Colors.white);
+}
+
+unittest {
+	CharBuffer buffer = new CharBuffer();
 	buffer.setSize(10,10);
 	assert(buffer.isValidPosition(1,1));
 }

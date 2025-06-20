@@ -51,8 +51,10 @@ void srcWrite(CharBuffer* _srcBuffer, uint pointerX, uint pointerY) {
 	
 }
 void main() {
-	CharBuffer srcBuffer;
-	CharBuffer frontBuffer;
+	fixWindows();
+
+	CharBuffer srcBuffer = new CharBuffer();
+	CharBuffer frontBuffer = new CharBuffer();
 
 	uint pointerX, pointerY = 0;
 	uint firstX, firstY, lastX, lastY = 0;

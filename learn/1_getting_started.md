@@ -18,7 +18,7 @@ void main() {
 Then you need to create a `CharBuffer` object. like following.
 
 ```d
-CharBuffer buffer;
+CharBuffer buffer = new CharBuffer();
 ```
 
 Alright we now created the buffer, now we need to set size of buffer (setting up the actual buffer data).
@@ -46,7 +46,7 @@ import termlib;
 import std.stdio;
 
 void main() {
-	CharBuffer buffer;
+	CharBuffer buffer = new CharBuffer();
 	buffer.setSize(25, 25);
 	buffer.fill('#');
 	write(buffer.getAsString());

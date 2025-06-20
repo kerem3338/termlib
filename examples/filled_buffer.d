@@ -9,7 +9,7 @@ import termlib;
 import std.stdio;
 
 void main() {
-	CharBuffer buffer;
+	CharBuffer buffer = new CharBuffer();
 
 	buffer.setSize(25,15);
 	buffer.fill('#');

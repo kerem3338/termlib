@@ -9,8 +9,8 @@ import termlib;
 import std.stdio;
 
 void main() {
-	CharBuffer srcBuffer;
-	CharBuffer frontBuffer;
+	CharBuffer srcBuffer = new CharBuffer();
+	CharBuffer frontBuffer = new CharBuffer();
 
 	uint pointerX, pointerY = 0;
 	char currentChar = '*';

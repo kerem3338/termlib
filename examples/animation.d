@@ -11,7 +11,7 @@ import core.thread : Thread;
 import std.datetime;
 
 void main() {
-	CharBuffer buffer;
+	CharBuffer buffer = new CharBuffer();
 
 	string[] frames     = ["<$>-_<$>","<$>_-<$>","<$>--<$>"];
 	size_t currentFrame = 0;

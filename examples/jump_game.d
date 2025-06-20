@@ -11,10 +11,10 @@ import std.format;
 import core.thread : Thread;
 import std.datetime;
 
-CharBuffer srcBuffer;
-CharBuffer frontBuffer;
-
 void main() {
+	CharBuffer srcBuffer = new CharBuffer();
+	CharBuffer frontBuffer = new CharBuffer();
+
 	string[] playerAnimation = ["<$._.$>","<$>.<$>",];
 	int currentFrame = 0;
 
