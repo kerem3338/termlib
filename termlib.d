@@ -11,7 +11,7 @@ $$$$$$$$/______    ______   _____  ____  $$ |$$/ $$ |____
 
 Termlib is a project by Zoda (github.com/kerem338)
 
-Very basic but usefull terminal manipulation library.
+Usefull terminal manipulation library.
 
 
 Note:
@@ -52,6 +52,7 @@ struct Colors {
 	enum Color green = Color(0, 255, 0);
 	enum Color blue  = Color(0, 0, 255);
 	enum Color grey = Color(127, 127, 127);
+	enum Color yellow = Color(255, 255, 0);
 }
 
 struct Styles {
@@ -422,6 +423,19 @@ class ColoredBuffer : CharBuffer {
 		bgData[] = _bg;
 	}
 
+	void fillAreaColored(Color _fg, Color _bg, URect rect, wchar chr) {
+		for (int y = 0; y < rect.h; y++) {
+			for (int x = 0; x < rect.w; x++) {
+				uint destX = x + rect.x;
+				uint destY = y + rect.y;
+
+				setColorAt(destX, destY, _fg, _bg);
+				setAt(destX, destY, chr);
+
+			}
+		}
+	}
+
 	void writeAtColored(Color fg, Color bg, uint x, uint y, string text) {
 		Color _fg = this.fg;
 		Color _bg = this.bg;
@@ -468,15 +482,15 @@ class ColoredBuffer : CharBuffer {
 		
 		for (int i = 0; i < data.length; i++) {
 			wchar ch = data[i];
-			Color fg = fgData[i];
-			Color bg = bgData[i];
+			Color _fg = fgData[i];
+			Color _bg = bgData[i];
 			if (x == width) {
 				x = 0;
 				value ~= "\n";
 			}
 
 			x++;
-			value ~= getCombinedColored(fg, bg, ch.to!string);
+			value ~= getCombinedColored(_fg, _bg, ch.to!string);
 		}
 
 		return value;
@@ -520,6 +534,7 @@ string bufferToTTI(CharBuffer buffer) {
 	}
 	return outSrc;
 }
+
 
 /*****************************************************************/
 /** Termlib Tests                                               **/

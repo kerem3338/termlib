@@ -62,7 +62,7 @@ bool get_arg(string arg_name,string[] args){
 }
 
 void writeHelp(string[] args, int exitCode = 0) {
-	write(format(helpText,args[0]));
+	write(format(helpText, baseName(args[0])));
 	exit(exitCode);
 }
 
@@ -124,7 +124,9 @@ void main(string[] args) {
 			break;
 		case "run-tests":
 			CMD("dmd termlib.d -unittest -main -of=termlib.exe");
-			CMD("termlib.exe");
+			version (Windows) {
+				CMD("termlib.exe");
+			} else { CMD("./termlib.exe"); }
 			break;
 		case "fix-win":
 			CMD("chcp 65001");

@@ -17,7 +17,7 @@ And finally run with
 ```
 
 ## Example Usage
-```
+```d
 import termlib;
 import std.stdio;
 
@@ -27,7 +27,7 @@ void main() {
 	buffer.setSize(25,15);
 	buffer.fill('#');
 
-	buffer.writeCentered(0,"Hello World");
+	buffer.writeCentered("Hello World");
 
 	write(buffer.getAsString());
 
