@@ -16,19 +16,28 @@ import std.datetime;
 // Variables for flags
 long startTime;
 bool getTime;
+bool noSkip = false;
+
+
+string[] ignored_examples = [
+	"arsd_simpledisplay.d" // Reason: needs external dependencies
+];
 
 string helpText = "
 Usage: %s <command> <args> ...
 
 Commands:
-	--help | help    -> Writes this message then exits.
-	build-examples   -> Builds the examples.
-	run-tests        -> Builds && runs unit tests
-	build <filename> -> Builds the given file with termlib.d
-	fix-win          -> executes `chcp 65001` command.
+	--help | help            -> Writes this message then exits.
+	build-examples           -> Builds the examples.
+	run-tests                -> Builds && runs unit tests
+	build <filename>         -> Builds the given file with termlib.d
+	build-example <filename> -> Builds a single example
+	fix-win                  -> executes `chcp 65001` command.
+	ignored_examples         -> Lists all examples ignored by `build-examples` by default
 
 Flags:
 	-time            -> Records elapsed time to execute the command
+	-noskip          -> Don't skip ignored examples
 	
 termlib is a project by Zoda (github.com/kerem3338)
 ";
@@ -88,6 +97,7 @@ void main(string[] args) {
 	atexit(&onExit);
 
 	getTime = get_arg("-time", args);
+	noSkip  = get_arg("-noskip", args);
 	startTime = Clock.currTime().toUnixTime();
 
 	if (args.length == 1) {
@@ -101,12 +111,42 @@ void main(string[] args) {
 		case "help", "--help":
 			writeHelp(args, -1);
 			break;
+
 		case "build-examples":
-			auto dFiles = dirEntries("examples", SpanMode.shallow).filter!(f => f.name.endsWith(".d"));
-			foreach (filepath; dFiles) {
+			auto examplesDir = dirEntries("examples", SpanMode.shallow).filter!(f => f.name.endsWith(".d"));
+			foreach (filepath; examplesDir) {
+					if (ignored_examples.canFind(baseName(filepath)) && !noSkip) {
+						writeln(format("[INF]: Skipped example: %s", filepath));
+						continue;
+					}
 			    CMD(format("dmd termlib.d %s -of=%s", filepath, stripExtension(filepath) ~ ".exe" ), true);
 			}
 			break;
+
+		case "build-example":
+			auto examplesDir = dirEntries("examples", SpanMode.shallow).filter!(f => f.name.endsWith(".d"));
+			if (args.count < 3) {
+				write(format("`build-example` Invalid argument count: required 3 (executable, build-example, <filepath>), got %d", args.length));
+				exit(-2);
+			}
+
+			string filename = args[2];
+			string filepath = buildPath("examples", filename);
+
+			if (!exists(filepath) || !isFile(filepath)) {
+				write(format("`build-example` Given filepath (`%s`) not exists or not a file.", filepath));
+				exit(-3);
+			}
+
+			CMD(format("dmd termlib.d %s -of=%s", filepath, stripExtension(filepath) ~ ".exe" ), true);
+			break;
+
+		case "ignored_examples":
+			foreach(string example_name; ignored_examples) {
+				writeln(example_name);
+			}
+			break;
+
 		case "build":
 			if (args.count < 3) {
 				write(format("`build` Invalid argument count: required 3 (executable, build, <filepath>), got %d", args.length));
@@ -122,15 +162,18 @@ void main(string[] args) {
 
 			CMD(format("dmd termlib.d %s -of=%s", filepath, stripExtension(filepath) ~ ".exe" ), true);
 			break;
+
 		case "run-tests":
 			CMD("dmd termlib.d -unittest -main -of=termlib.exe");
 			version (Windows) {
 				CMD("termlib.exe");
 			} else { CMD("./termlib.exe"); }
 			break;
+
 		case "fix-win":
 			CMD("chcp 65001");
 			break;
+
 		default:
 			write("Invalid command. \n");
 			writeHelp(args, -1);

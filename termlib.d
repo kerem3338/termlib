@@ -459,6 +459,11 @@ class ColoredBuffer : CharBuffer {
 		bgData[y * width + x] = bg;
    }
 
+   void setColor(Color _fg, Color _bg) {
+   	this.fg = _fg;
+   	this.bg = _bg;
+   }
+   
 	void setColorAt(uint x, uint y, Color fg, Color bg) {
 		if (!isValidPosition(x, y)) return;
 		fgData[y * width + x] = fg;
