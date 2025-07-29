@@ -33,7 +33,7 @@ Commands:
 	build <filename>         -> Builds the given file with termlib.d
 	build-example <filename> -> Builds a single example
 	fix-win                  -> executes `chcp 65001` command.
-	ignored_examples         -> Lists all examples ignored by `build-examples` by default
+	ignored-examples         -> Lists all examples ignored by `build-examples` by default
 
 Flags:
 	-time            -> Records elapsed time to execute the command
@@ -141,7 +141,7 @@ void main(string[] args) {
 			CMD(format("dmd termlib.d %s -of=%s", filepath, stripExtension(filepath) ~ ".exe" ), true);
 			break;
 
-		case "ignored_examples":
+		case "ignored-examples":
 			foreach(string example_name; ignored_examples) {
 				writeln(example_name);
 			}

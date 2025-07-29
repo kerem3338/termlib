@@ -15,7 +15,7 @@ Usefull terminal manipulation library.
 
 
 Note:
-	** If you are a windows user and buffer contents seems broken, run `chcp 65001` at your terminal.
+	** If you are a Windows user and buffer content seems broken, run `chcp 65001` at your terminal.
 
 This project licensed under MIT license.
 */
@@ -26,11 +26,12 @@ import std.variant;
 import std.conv;
 import core.stdc.stdio;
 import std.format;
+import std.file;
 
 extern (C) int kbhit();
 extern (C) int getch();
 
-const string __version__ = "0.1.1";
+const string __version__ = "0.1.2";
 
 version(Windows) {
 	import core.sys.windows.windows;
@@ -46,13 +47,15 @@ enum AsciiKeys {
 }
 
 struct Colors {
-	enum Color white = Color(255, 255, 255);
-	enum Color black = Color(0, 0, 0);
-	enum Color red   = Color(255, 0, 0);
-	enum Color green = Color(0, 255, 0);
-	enum Color blue  = Color(0, 0, 255);
-	enum Color grey = Color(127, 127, 127);
-	enum Color yellow = Color(255, 255, 0);
+	enum Color white     = Color(255, 255, 255);
+	enum Color black     = Color(0, 0, 0);
+	enum Color red       = Color(255, 0, 0);
+	enum Color green     = Color(0, 255, 0);
+	enum Color darkGreen = Color(0, 127, 0);
+	enum Color blue      = Color(0, 0, 255);
+	enum Color darkBlue  = Color(0, 0, 127);
+	enum Color grey      = Color(127, 127, 127);
+	enum Color yellow    = Color(255, 255, 0);
 }
 
 struct Styles {
@@ -170,7 +173,6 @@ Size getConsoleSize() {
 	return size;
 }
 
-
 /*
 Function for setting console title
 
@@ -228,8 +230,11 @@ class CharBuffer {
 
 
 	alias writeWC = writeWidthCentered;
+	alias writewc = writeWidthCentered;
 	alias writeHC = writeHeightCentered;
+	alias writehc = writeHeightCentered;
 	alias writeC = writeCentered;
+	alias writec = writeCentered;
 	alias drawER = drawEmptyRect;
 	
 	this() {}
@@ -240,10 +245,18 @@ class CharBuffer {
 		data[] = ' ';
 	}
 
+	void setSize(Size size) {
+		setSize(size.width, size.height);
+	}
+
 	void setAt(uint x, uint y, wchar chr) {
 		if (!isValidPosition(x,y)) return;
 
 		data[y * width + x] = chr;
+	}
+
+	void setAt(UPoint point, wchar chr) {
+		setAt(point.x, point.y, chr);
 	}
 
 	void fill(wchar chr) {
@@ -272,7 +285,7 @@ class CharBuffer {
 	}
 
 	void writeWidthCentered(uint y, string text) {
-		uint x = width / 2 - text.length / 2;
+		uint x = cast(uint)(width / 2) - cast(uint)(text.length / 2);
 		writeAt(x, y, text); 
 	}
 
@@ -292,11 +305,11 @@ class CharBuffer {
 		uint y = height / 2;
 		writeAt(x, y, text);
 
-		return URect(x, y, text.length, 1);
+		return URect(x, y, cast(uint)text.length, 1);
 	}
 
 
-	CharBuffer getsubArea(URect rect) {
+	CharBuffer getSubArea(URect rect) {
 		CharBuffer subBuffer = new CharBuffer();
 		subBuffer.setSize(rect.w, rect.h);
 		subBuffer.fill(' ');
@@ -391,6 +404,24 @@ class CharBuffer {
 		return value;
 	}
 
+	void insertFromFile(string filePath, uint x, uint y, bool ignoreNewline = true) {
+		string content = readText(filePath);
+
+		uint whereX = x;
+		uint whereY = y;
+		foreach (wchar ch; content) {
+			if (ch == '\n') {
+				whereX = x;
+				whereY++;
+
+				if (ignoreNewline) continue;
+			}
+
+			setAt(whereX, whereY, ch);
+			whereX++;
+		}
+	}
+
 }
 
 class ColoredBuffer : CharBuffer {
@@ -400,6 +431,9 @@ class ColoredBuffer : CharBuffer {
 	Color[] bgData;
 
 	this() {}
+
+	alias writeAC = writeAtColored;
+	alias wac     = writeAtColored;
 
 	override void setSize(uint w, uint h) {
 		super.setSize(w, h);
@@ -457,13 +491,13 @@ class ColoredBuffer : CharBuffer {
 
 		fgData[y * width + x] = fg;
 		bgData[y * width + x] = bg;
-   }
+	}
 
-   void setColor(Color _fg, Color _bg) {
-   	this.fg = _fg;
-   	this.bg = _bg;
-   }
-   
+	void setColor(Color _fg, Color _bg) {
+		this.fg = _fg;
+		this.bg = _bg;
+	}
+
 	void setColorAt(uint x, uint y, Color fg, Color bg) {
 		if (!isValidPosition(x, y)) return;
 		fgData[y * width + x] = fg;
@@ -500,7 +534,6 @@ class ColoredBuffer : CharBuffer {
 
 		return value;
 	}
-
 }
 
 CharBuffer mergeBuffers(CharBuffer[] buffers, uint width, uint height, wchar emptyCellChar) {
@@ -515,7 +548,7 @@ CharBuffer mergeBuffers(CharBuffer[] buffers, uint width, uint height, wchar emp
 }
 
 /**
-A function for converting buffer data to Terminal Text Image format version
+A function for converting buffer data to Terminal Text Image Format version 1
 
 Params:
 	CharBuffer buffer: Buffer to convert
@@ -540,12 +573,19 @@ string bufferToTTI(CharBuffer buffer) {
 	return outSrc;
 }
 
-
 /*****************************************************************/
 /** Termlib Tests                                               **/
 /*****************************************************************/
 unittest {
 	CharBuffer buffer = new CharBuffer();
+	buffer.setSize(1,1);
+	buffer.fill('#');
+
+	assert(buffer.getAt(0,0) == '#');
+}
+
+unittest {
+	ColoredBuffer buffer = new ColoredBuffer();
 	buffer.setSize(1,1);
 	buffer.fill('#');
 

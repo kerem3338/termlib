@@ -11,8 +11,9 @@ import std.random;
 
 void main() {
 	CharBuffer buffer = new CharBuffer();
+	Size termSize = getConsoleSize();
 
-	buffer.setSize(25,25);
+	buffer.setSize(termSize);
 	buffer.fill(' ');
 
 	auto rng = Random(unpredictableSeed);
@@ -21,8 +22,8 @@ void main() {
 	hideCursor();
 
 	while (run) {
-		uint x = uniform(0, 25, rng);
-		uint y = uniform(0, 25, rng);
+		uint x = uniform(0, buffer.width, rng);
+		uint y = uniform(0, buffer.height, rng);
 		
 		char chr = cast(char) uniform(32, 127, rng);
 		buffer.setAt(x, y, chr);
