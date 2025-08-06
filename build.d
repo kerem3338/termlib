@@ -12,12 +12,17 @@ import std.file;
 import std.algorithm;
 import core.stdc.stdlib : exit, system, atexit;
 import std.datetime;
-
+import std.array;
 // Variables for flags
-long startTime;
+MonoTime startTime;
 bool getTime;
 bool noSkip = false;
+bool quite = false;
+string compiler = "dmd";
+string[] sourceFiles = ["termlib.d"];
 
+// IMPORTANT
+mixin("string versionId = \""~__TIMESTAMP__~"\";");
 
 string[] ignored_examples = [
 	"arsd_simpledisplay.d" // Reason: needs external dependencies
@@ -27,25 +32,30 @@ string helpText = "
 Usage: %s <command> <args> ...
 
 Commands:
-	--help | help            -> Writes this message then exits.
-	build-examples           -> Builds the examples.
+	--help | help            -> Writes this message then exits
+	build-examples           -> Builds the examples
 	run-tests                -> Builds && runs unit tests
 	build <filename>         -> Builds the given file with termlib.d
 	build-example <filename> -> Builds a single example
-	fix-win                  -> executes `chcp 65001` command.
+	fix-win                  -> executes `chcp 65001` command
 	ignored-examples         -> Lists all examples ignored by `build-examples` by default
+	version                  -> Prints executable version ID
+	arsd-terminal <path>     -> Downloads arsd.terminal and arsd.core
 
-Flags:
+Flags etc.:
 	-time            -> Records elapsed time to execute the command
 	-noskip          -> Don't skip ignored examples
+	-quite           -> Don't print things that are not too important
+	--compiler=<...> -> Change selected compiler (default: dmd)
+	--sources=<...>  -> Additional source files for compiler (seperated by comma)
 	
 termlib is a project by Zoda (github.com/kerem3338)
 ";
 bool check_value_arg(string arg_name,string[] args) {
   foreach (string arg; args) {
-	if (arg.startsWith(arg_name) && arg[arg_name.length] == '='){
-	  return true;
-	}
+		if (arg.startsWith(arg_name) && arg[arg_name.length] == '='){
+		  return true;
+		}
   }
 
   return false;
@@ -75,36 +85,59 @@ void writeHelp(string[] args, int exitCode = 0) {
 	exit(exitCode);
 }
 
-void CMD(string source, bool _exit = false) {
+int CMD(string source, bool _exit = false) {
 	writeln("[CMD]: ", source);
 	int ret = system(cast(char*)source);
 
 	if (ret != 0 && _exit) {
 		exit(-1);
 	}
+
+	return ret;
 }
 
 extern (C) void onExit() {
 	if (getTime) {
-		auto endTime = Clock.currTime().toUnixTime();
-		auto elapsed = cast(double)(endTime - startTime);
-		writefln("\n[Elapsed %.2f seconds.]", elapsed);
+		auto ms = (MonoTime.currTime - startTime).total!"msecs";
+
+		writefln("\n[\033[3mElapsed: %dm, %ds, %dms\033[23m]", ms / 60000, (ms % 60000) / 1000, ms % 1000);
 	}
 }
 
+string getSourceFiles() {
+	return sourceFiles.join(" ");
+}
+
+/*
+arsd.terminal is good for reading UTF-8 chars from terminal, currently termlib can't do that.
+*/
+void downloadArsdTerminal(string basePath) {
+	CMD(format("curl https://raw.githubusercontent.com/adamdruppe/arsd/refs/heads/master/terminal.d -o %s", buildPath(basePath, "terminal.d")), true);
+	CMD(format("curl https://raw.githubusercontent.com/adamdruppe/arsd/refs/heads/master/core.d -o %s", buildPath(basePath, "core.d")), true);
+}
 
 void main(string[] args) {
 	atexit(&onExit);
 
+	string compilerArg = get_value_arg("--compiler", args);
+	string sourcesArg  = get_value_arg("--sources", args);
 	getTime = get_arg("-time", args);
 	noSkip  = get_arg("-noskip", args);
-	startTime = Clock.currTime().toUnixTime();
+	quite   = get_arg("-quite", args);
+	startTime = MonoTime.currTime;
 
 	if (args.length == 1) {
 		writeHelp(args, 0);
 	}
 
-	
+	if (compilerArg != "") {
+		compiler = compilerArg;
+	}
+
+	if (sourcesArg != "") {
+		sourceFiles ~= sourcesArg.split(",");
+	}
+
 
 	string cmd = args[1];
 	switch (cmd) {
@@ -119,7 +152,7 @@ void main(string[] args) {
 						writeln(format("[INF]: Skipped example: %s", filepath));
 						continue;
 					}
-			    CMD(format("dmd termlib.d %s -of=%s", filepath, stripExtension(filepath) ~ ".exe" ), true);
+			    CMD(format("%s %s %s -of=%s", compiler, getSourceFiles(), filepath, stripExtension(filepath) ~ ".exe" ), true);
 			}
 			break;
 
@@ -138,7 +171,7 @@ void main(string[] args) {
 				exit(-3);
 			}
 
-			CMD(format("dmd termlib.d %s -of=%s", filepath, stripExtension(filepath) ~ ".exe" ), true);
+			CMD(format("%s %s %s -of=%s", compiler, getSourceFiles(), filepath, stripExtension(filepath) ~ ".exe" ), true);
 			break;
 
 		case "ignored-examples":
@@ -160,21 +193,36 @@ void main(string[] args) {
 			}
 
 
-			CMD(format("dmd termlib.d %s -of=%s", filepath, stripExtension(filepath) ~ ".exe" ), true);
+			CMD(format("%s %s %s -of=%s", compiler, getSourceFiles(), filepath, stripExtension(filepath) ~ ".exe" ), true);
+			break;
+
+		case "version":
+			if (!quite) {
+				write("build.d Executable Version ID:\n\t"); 
+			}
+			writeln(versionId);
 			break;
 
 		case "run-tests":
-			CMD("dmd termlib.d -unittest -main -of=termlib.exe");
+			CMD(format("%s termlib.d -unittest -main -of=termlib.exe", compiler));
 			version (Windows) {
 				CMD("termlib.exe");
 			} else { CMD("./termlib.exe"); }
 			break;
 
+		case "arsd-terminal":
+			string basePath = dirName(thisExePath);
+			if(args.length >= 3) {
+				basePath = args[2];
+			}
+			downloadArsdTerminal(basePath);
+			break;
 		case "fix-win":
 			CMD("chcp 65001");
 			break;
 
 		default:
+			if (quite) break;
 			write("Invalid command. \n");
 			writeHelp(args, -1);
 			break;

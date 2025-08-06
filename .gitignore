@@ -5,3 +5,6 @@
 *.lib
 test.d
 __*
+arsd_core.d
+core.d
+terminal.d

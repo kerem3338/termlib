@@ -1,6 +1,6 @@
 # Getting Started With Termlib
 
-As mentioned in [README.md](../README.md) you can compile your own program file with `build.exe` tool or you can use `dmd termlib.d <your_filename.d> -of=<your_output_name>.exe` command.
+As mentioned in [README.md](../README.md) you can compile your own program file with `build.exe` tool or you can use `dmd termlib.d <your_filename.d> -of=<your_executable_name>` command.
 
 ## Creating A Buffer
 

@@ -57,7 +57,7 @@ void main() {
 		}
 
 		/** Logic **/
-		currentFrame = (currentFrame + 1) % playerAnimation.length;
+		currentFrame = cast(uint)(currentFrame + 1) % cast(uint)playerAnimation.length;
 
 
 		if (playerY >= srcBuffer.height - 1) {

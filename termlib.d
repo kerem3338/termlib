@@ -27,6 +27,7 @@ import std.conv;
 import core.stdc.stdio;
 import std.format;
 import std.file;
+import std.typecons: tuple, Tuple;
 
 extern (C) int kbhit();
 extern (C) int getch();
@@ -485,8 +486,8 @@ class ColoredBuffer : CharBuffer {
 		this.bg = _bg;
 	}
 
-	override void setAt(uint x, uint y, wchar ch) {
-		super.setAt(x, y, ch);
+	override void setAt(uint x, uint y, wchar chr) {
+		super.setAt(x, y, chr);
 		if (!isValidPosition(x, y)) return;
 
 		fgData[y * width + x] = fg;
@@ -553,7 +554,7 @@ A function for converting buffer data to Terminal Text Image Format version 1
 Params:
 	CharBuffer buffer: Buffer to convert
 Returns:
-	str
+	string
 **/
 string bufferToTTI(CharBuffer buffer) {
 	string outSrc = "TTI 1\n";
@@ -572,6 +573,66 @@ string bufferToTTI(CharBuffer buffer) {
 	}
 	return outSrc;
 }
+
+/**
+ * Converts a TTI (Terminal Text Image) formatted string into a CharBuffer.
+ *
+ * Params:
+ *     src = The TTI-formatted string to parse.
+ *
+ * Returns:
+ *     A tuple containing:
+ *     - int: Error code (0 for success, -1 for invalid TTI format).
+ *     - int: Parsed TTI version.
+ *     - CharBuffer: The constructed buffer.
+ *
+ * Error Codes:
+ *     0 = No error
+ *    -1 = Not a correct TTI data
+ *
+ * TODO:
+ *     Make this function more readable.
+ */
+
+Tuple!(int,int,CharBuffer) TTIFromBuffer(string src) {
+	import std.string;
+	
+	string[] lines = splitLines(src);
+
+	CharBuffer outBuffer = new CharBuffer();
+	int TTIversion = 1;
+
+	if (lines.length < 3 || !lines[0].startsWith("TTI")) {
+		return tuple(-1, TTIversion, outBuffer);
+	}
+
+	TTIversion = lines[0][4..$].strip.to!int;
+
+	string[] sizeParts = lines[1].split();
+	if (sizeParts.length != 2) {
+		return tuple(-1, TTIversion, outBuffer);
+	}
+
+	uint width = sizeParts[0].to!uint;
+	uint height = sizeParts[1].to!uint;
+	outBuffer.setSize(width, height);
+
+	if (lines[2] != "---") {
+		return tuple(-1, TTIversion, outBuffer);
+	}
+
+	int y = 0;
+	for (int i = 3; i < lines.length && y < height; ++i, ++y) {
+		auto line = lines[i];
+		foreach (x, wchar ch; line) {
+			if (x < width)
+				outBuffer.setAt(x.to!uint, y, ch);
+		}
+	}
+
+	return tuple(0, TTIversion, outBuffer);
+}
+
 
 /*****************************************************************/
 /** Termlib Tests                                               **/
