@@ -35,7 +35,7 @@ void main() {
 		buffer.fill(' ');
 		buffer.writeC(frames[currentFrame]);
 
-		setCursorPosition(0,0);
+		setCursorPositionOS(0,0);
 		write(buffer.getAsString());
 
 		Thread.sleep(100.msecs);

@@ -33,7 +33,7 @@ void main() {
 		frontBuffer.setAt(pointerX, pointerY, currentChar);
 		frontBuffer.setAt(pointerX, pointerY + 1, '^');
 
-		setCursorPosition(0,0);
+		setCursorPositionOS(0,0);
 		write(frontBuffer.getAsString());
 
 		

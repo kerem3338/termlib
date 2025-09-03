@@ -18,7 +18,7 @@ import core.sys.windows.windows;
 pragma(lib, "user32");
 
 void saveDialog(CharBuffer* _srcBuffer) {
-	setCursorPosition(0,0);
+	setCursorPositionOS(0,0);
 
 	showCursor();
 		write("Path to save [empty path = cancel]: ");
@@ -37,7 +37,7 @@ void saveDialog(CharBuffer* _srcBuffer) {
 }
 
 void srcWrite(CharBuffer* _srcBuffer, uint pointerX, uint pointerY) {
-	setCursorPosition(pointerX, pointerY);
+	setCursorPositionOS(pointerX, pointerY);
 
 	showCursor();
 		string inp = readln();
@@ -68,13 +68,13 @@ void main() {
 	setConsoleTitleOS("Win Paint");
 	hideCursor();
 
-	setCursorPosition(0, termSize.h - 8);
+	setCursorPositionOS(0, termSize.h - 8);
 	write(getStyled("Win Paint By Zoda", false, true));
-	setCursorPosition(0, termSize.h - 6);
+	setCursorPositionOS(0, termSize.h - 6);
 	write("[end] X End [home] X Home [w] Write to buffer [f1] Save dialog");
-	setCursorPosition(0, termSize.h - 5);
+	setCursorPositionOS(0, termSize.h - 5);
 	write("[space] Paint [f] Fill the entire buffer [p] Pick color [escape] Exit");
-	setCursorPosition(0, termSize.h - 3);
+	setCursorPositionOS(0, termSize.h - 3);
 	write("[1] ' ' [2] '*' [3] '█' [4] '☺' [5] '♦' [6] '░'");
 	
 	while (run) {

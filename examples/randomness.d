@@ -28,7 +28,7 @@ void main() {
 		char chr = cast(char) uniform(32, 127, rng);
 		buffer.setAt(x, y, chr);
 
-		setCursorPosition(0,0);
+		setCursorPositionOS(0,0);
 		write(buffer.getAsString());
 
 		if (kbhit() != 0) {

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Termlib Web Preview</title>
+</head>
+<body>
+	<center>
+		<pre id="screen"></pre>
+		<p>Termlib Version: <span id="__version__"></span></p>
+	</center>
+<script>
+fetch('/version')
+	.then(r => r.text())
+	.then(data => {
+			document.querySelector("#__version__").textContent = data;
+			let eventSource = new EventSource("/content");
+			eventSource.onmessage = e => {
+					document.getElementById("screen").innerText = e.data.replace(/\\n/g, "\n");
+			};
+	});
+</script>
+</body>
+</html>

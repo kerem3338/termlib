@@ -2,6 +2,7 @@
 *.obj
 *.zip
 *.a
+*.dll
 *.lib
 test.d
 __*

@@ -18,8 +18,9 @@ MonoTime startTime;
 bool getTime;
 bool noSkip = false;
 bool quite = false;
+bool noTermlib = false;
 string compiler = "dmd";
-string[] sourceFiles = ["termlib.d"];
+string[] sourceFiles = [];
 
 // IMPORTANT
 mixin("string versionId = \""~__TIMESTAMP__~"\";");
@@ -48,6 +49,7 @@ Flags etc.:
 	-quite           -> Don't print things that are not too important
 	--compiler=<...> -> Change selected compiler (default: dmd)
 	--sources=<...>  -> Additional source files for compiler (seperated by comma)
+	-no-termlib      -> Remove termlib.d from sources
 	
 termlib is a project by Zoda (github.com/kerem3338)
 ";
@@ -119,15 +121,22 @@ void downloadArsdTerminal(string basePath) {
 void main(string[] args) {
 	atexit(&onExit);
 
+	sourceFiles = [relativePath(buildPath(dirName(thisExePath),"termlib.d"))];
+
 	string compilerArg = get_value_arg("--compiler", args);
 	string sourcesArg  = get_value_arg("--sources", args);
 	getTime = get_arg("-time", args);
 	noSkip  = get_arg("-noskip", args);
 	quite   = get_arg("-quite", args);
+	noTermlib = get_arg("-no-termlib", args);
 	startTime = MonoTime.currTime;
 
 	if (args.length == 1) {
 		writeHelp(args, 0);
+	}
+
+	if (noTermlib) {
+		sourceFiles = [];
 	}
 
 	if (compilerArg != "") {

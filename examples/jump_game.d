@@ -37,7 +37,7 @@ void main() {
 		frontBuffer.writeAt(0,0, format("Score: %d",score));
 		frontBuffer.writeWidthCentered(playerY, playerAnimation[currentFrame]);
 
-		setCursorPosition(0,0);
+		setCursorPositionOS(0,0);
 		write(frontBuffer.getAsString());
 		
 		if (kbhit() != 0) {
