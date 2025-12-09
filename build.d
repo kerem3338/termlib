@@ -21,6 +21,7 @@ bool quite = false;
 bool noTermlib = false;
 string compiler = "dmd";
 string[] sourceFiles = [];
+bool run;
 
 // IMPORTANT
 mixin("string versionId = \""~__TIMESTAMP__~"\";");
@@ -50,7 +51,7 @@ Flags etc.:
 	--compiler=<...> -> Change selected compiler (default: dmd)
 	--sources=<...>  -> Additional source files for compiler (seperated by comma)
 	-no-termlib      -> Remove termlib.d from sources
-	
+	-run	         -> Runs the compiled source if its possible
 termlib is a project by Zoda (github.com/kerem3338)
 ";
 bool check_value_arg(string arg_name,string[] args) {
@@ -130,6 +131,7 @@ void main(string[] args) {
 	quite   = get_arg("-quite", args);
 	noTermlib = get_arg("-no-termlib", args);
 	startTime = MonoTime.currTime;
+	run = get_arg("-run", args);
 
 	if (args.length == 1) {
 		writeHelp(args, 0);
@@ -181,6 +183,9 @@ void main(string[] args) {
 			}
 
 			CMD(format("%s %s %s -of=%s", compiler, getSourceFiles(), filepath, stripExtension(filepath) ~ ".exe" ), true);
+			if (run) {
+				CMD(stripExtension(filepath) ~ ".exe");
+			}
 			break;
 
 		case "ignored-examples":
@@ -203,6 +208,11 @@ void main(string[] args) {
 
 
 			CMD(format("%s %s %s -of=%s", compiler, getSourceFiles(), filepath, stripExtension(filepath) ~ ".exe" ), true);
+			
+			if (run) {
+				CMD(stripExtension(filepath) ~ ".exe");
+			}
+			
 			break;
 
 		case "version":

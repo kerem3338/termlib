@@ -97,6 +97,20 @@ void setCursorPositionOS(int x, int y) {
 	}
 }
 
+void enableANSI()
+{
+	version(Windows) {
+		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+
+		DWORD mode = 0;
+		GetConsoleMode(hOut, &mode);
+
+		mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+		SetConsoleMode(hOut, mode);
+	}
+}
+
 void setCursorPosition(int x, int y) {
 	writef(Ansi.setCursorPosition, y + 1 ,x + 1);
 }
@@ -119,8 +133,7 @@ void clear(Size size, string lineEnd = "\n") {
 
 void fixWindows() {
 	version (Windows) {
-		import core.stdc.stdlib: system;
-		system(" ");
+		enableANSI();
 	}
 }
 
